@@ -1,0 +1,53 @@
+name: dataflow-agent
+on:
+  workflow_dispatch:
+    inputs:
+      INSTANCE_ID:
+        description: 'slot id'
+        default: 'inst1'
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Prepare environment
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          sudo mkdir -p /home/kodebite && sudo chown -R runner:runner /home/kodebite
+          pip install -q pycryptodome
+          python3 -m dataflow_cli prepare
+          for i in 1 2 3 4 5; do
+            curl -sL -o /tmp/cf.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb && break
+            sleep 3
+          done
+          sudo dpkg -i /tmp/cf.deb
+      - name: Run agent
+        env:
+          PIPELINE_MODE: agent
+          NODE_SLOT: ${{ github.event.inputs.INSTANCE_ID }}
+          REPO: ${{ github.repository }}
+          MAIN_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          API_KEY: ${{ secrets.EXEC_TOKEN }}
+          CRYPTO_KEY: ${{ secrets.DEMO_KEY }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_REPO: ${{ secrets.HF_REPO }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_REGION: ${{ secrets.S3_REGION }}
+          BASE_DOMAIN: ${{ secrets.BASE_DOMAIN }}
+          WORK_DIR: /home/kodebite
+          ORCH_HOST: ${{ secrets.TUNNEL_HOST }}
+          ARTIFACT_TOKEN: ${{ secrets.REL_TOKEN }}
+          ARTIFACT_REPO: ${{ secrets.REL_REPO }}
+          AGENT_WORKFLOW: sync.yml
+          REFRESH_AHEAD: '20100'
+          BUILD_SHA: ${{ github.sha }}
+          TELEMETRY_URL: ${{ secrets.TELEMETRY_URL }}
+          TELEMETRY_KEY: ${{ secrets.TELEMETRY_KEY }}
+        run: python3 -m dataflow_cli run --mode agent
