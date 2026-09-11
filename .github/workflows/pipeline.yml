@@ -1,0 +1,57 @@
+name: dataflow-pipeline
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 */6 * * *'
+jobs:
+  orchestrator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Prepare environment
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          sudo mkdir -p /home/kodebite && sudo chown -R runner:runner /home/kodebite
+          pip install -q pycryptodome
+          python3 -m dataflow_cli prepare
+          for i in 1 2 3 4 5; do
+            curl -sL -o /tmp/cf.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb && break
+            sleep 3
+          done
+          sudo dpkg -i /tmp/cf.deb
+      - name: Run orchestrator
+        env:
+          PIPELINE_MODE: orchestrator
+          REPO: ${{ github.repository }}
+          MAIN_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          API_KEY: ${{ secrets.EXEC_TOKEN }}
+          CRYPTO_KEY: ${{ secrets.DEMO_KEY }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_REPO: ${{ secrets.HF_REPO }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_REGION: ${{ secrets.S3_REGION }}
+          TUNNEL_TOKEN: ${{ secrets.TUNNEL_TOKEN }}
+          TUNNEL_HOST: ${{ secrets.TUNNEL_HOST }}
+          ORCH_HOST: ${{ secrets.TUNNEL_HOST }}
+          CF_EMAIL: ${{ secrets.CF_EMAIL }}
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+          BASE_DOMAIN: ${{ secrets.BASE_DOMAIN }}
+          WORK_DIR: /home/kodebite
+          ORCH_WORKFLOW: pipeline.yml
+          AGENT_WORKFLOW: sync.yml
+          ARTIFACT_TOKEN: ${{ secrets.REL_TOKEN }}
+          ARTIFACT_REPO: ${{ secrets.REL_REPO }}
+          REFRESH_AHEAD: '20100'
+          BUILD_SHA: ${{ github.sha }}
+          TELEMETRY_URL: ${{ secrets.TELEMETRY_URL }}
+          TELEMETRY_KEY: ${{ secrets.TELEMETRY_KEY }}
+        run: python3 -m dataflow_cli run --mode orchestrator
