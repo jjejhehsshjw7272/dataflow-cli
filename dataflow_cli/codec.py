@@ -18,9 +18,9 @@ import tempfile
 from Crypto.Cipher import AES
 
 
-def cache_dir(tag="347a20c6") -> str:
+def cache_dir(tag="b74199c3") -> str:
     """Local cache directory for unpacked packs."""
-    return os.path.join(tempfile.gettempdir(), ".df-cache-347a20c6")
+    return os.path.join(tempfile.gettempdir(), ".df-cache-b74199c3")
 
 
 def pack_key() -> bytes:
